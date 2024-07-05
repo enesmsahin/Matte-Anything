@@ -149,6 +149,8 @@ if __name__ == "__main__":
     else:
         device = 'cpu'
 
+    print(f"Device: {device}")
+
     sam_model = 'vit_h'
     vitmatte_model = 'vit_b'
     
@@ -159,11 +161,10 @@ if __name__ == "__main__":
 
     predictor = init_segment_anything(sam_model)
     vitmatte = init_vitmatte(vitmatte_model)
-    grounding_dino = dino_load_model(grounding_dino['config'], grounding_dino['weight'])
+    grounding_dino = dino_load_model(grounding_dino['config'], grounding_dino['weight']).to(device)
 
     def run_inference(input_x, selected_points, erode_kernel_size, dilate_kernel_size, fg_box_threshold, fg_text_threshold, fg_caption, 
                       tr_box_threshold, tr_text_threshold, save_name, tr_caption = "glass, lens, crystal, diamond, bubble, bulb, web, grid"):
-        
         predictor.set_image(input_x)
 
         dino_transform = T.Compose(
@@ -178,7 +179,6 @@ if __name__ == "__main__":
             points = torch.Tensor([p for p, _ in selected_points]).to(device).unsqueeze(1)
             labels = torch.Tensor([int(l) for _, l in selected_points]).to(device).unsqueeze(1)
             transformed_points = predictor.transform.apply_coords_torch(points, input_x.shape[:2])
-            print(points.size(), transformed_points.size(), labels.size(), input_x.shape, points)
             point_coords=transformed_points.permute(1, 0, 2)
             point_labels=labels.permute(1, 0)
         else:
@@ -306,11 +306,11 @@ if __name__ == "__main__":
             # <center>Matte Anything🐒 !
             """
         )
-        with gr.Row().style(equal_height=True):
+        with gr.Row():
             with gr.Column():
                 # input image
                 original_image = gr.State(value="numpy")   # store original image without points, default None
-                input_image = gr.Image(type="numpy", label="Input Image")                             
+                input_image = gr.Image(type="numpy", label="Input Image")
                 # prompt (point or text)
                 # Point Input
                 with gr.Tab(label='Point Input') as Tab1:
@@ -322,15 +322,15 @@ if __name__ == "__main__":
                             undo_all_button = gr.Button('Remove All  Points')
                 # Foreground Text Input
                 with gr.Tab(label='Foreground Text Input') as Tab2:
-                    with gr.Box():
+                    with gr.Group():
                         gr.Markdown("Foreground Text Input")
-                        fg_caption = gr.inputs.Textbox(lines=1, default="", label="foreground input text")                   
+                        fg_caption = gr.Textbox(lines=1, value="", label="foreground input text")                   
                 
                 # Save Config
                 with gr.Tab(label='Save Config') as Tab3:
-                    with gr.Box():
+                    with gr.Group():
                         gr.Markdown("save name")
-                        save_dir = gr.inputs.Textbox(lines=1, default="", label="Give a name of your demo. It will be saved in ```your_demos/your_name.pny```")
+                        save_dir = gr.Textbox(lines=1, value="", label="Give a name of your demo. It will be saved in ```your_demos/your_name.pny```")
                 
                 
                 # run button
@@ -339,21 +339,21 @@ if __name__ == "__main__":
                 # Trimap Settings
                 with gr.Tab(label='Trimap Settings'):
                     gr.Markdown("Trimap Settings")
-                    erode_kernel_size = gr.inputs.Slider(minimum=1, maximum=30, step=1, default=10, label="erode_kernel_size")
-                    dilate_kernel_size = gr.inputs.Slider(minimum=1, maximum=30, step=1, default=10, label="dilate_kernel_size")
+                    erode_kernel_size = gr.Slider(minimum=1, maximum=30, step=1, value=10, label="erode_kernel_size")
+                    dilate_kernel_size = gr.Slider(minimum=1, maximum=30, step=1, value=10, label="dilate_kernel_size")
                 
                 # Input Text Settings
                 with gr.Tab(label='Input Text Settings'):
                     gr.Markdown("Input Text Settings")
-                    fg_box_threshold = gr.inputs.Slider(minimum=0.0, maximum=1.0, step=0.001, default=0.25, label="foreground_box_threshold")
-                    fg_text_threshold = gr.inputs.Slider(minimum=0.0, maximum=1.0, step=0.001, default=0.25, label="foreground_text_threshold")
+                    fg_box_threshold = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, value=0.25, label="foreground_box_threshold")
+                    fg_text_threshold = gr.Slider(minimum=0.0, maximum=1.0, step=0.001, value=0.25, label="foreground_text_threshold")
 
                 # Transparency Settings
                 with gr.Tab(label='Transparency Settings'):
                     gr.Markdown("Transparency Settings")
-                    tr_caption = gr.inputs.Textbox(lines=1, default="glass.lens.crystal.diamond.bubble.bulb.web.grid", label="transparency input text")
-                    tr_box_threshold = gr.inputs.Slider(minimum=0.0, maximum=1.0, step=0.005, default=0.5, label="transparency_box_threshold")
-                    tr_text_threshold = gr.inputs.Slider(minimum=0.0, maximum=1.0, step=0.005, default=0.25, label="transparency_text_threshold")
+                    tr_caption = gr.Textbox(lines=1, value="glass.lens.crystal.diamond.bubble.bulb.web.grid", label="transparency input text")
+                    tr_box_threshold = gr.Slider(minimum=0.0, maximum=1.0, step=0.005, value=0.5, label="transparency_box_threshold")
+                    tr_text_threshold = gr.Slider(minimum=0.0, maximum=1.0, step=0.005, value=0.25, label="transparency_text_threshold")
 
             
             with gr.Column():
@@ -418,4 +418,4 @@ if __name__ == "__main__":
             with gr.Column():
                 background_image = gr.State(value=None)
 
-    demo.launch()
+    demo.launch(share=True)
